@@ -45,6 +45,7 @@ jobs:
       - run: python trend_bot.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
       - name: Save the new page and decision log
         run: |
           git config user.name "trend-bot"

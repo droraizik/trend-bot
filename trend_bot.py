@@ -33,7 +33,8 @@ NEWS_MODEL = "claude-haiku-5-5"
 # Copy Berkshire
 BERKSHIRE_CIK = "0001067983"
 BERKSHIRE_FILINGS_SINCE = "2017-08-01"
-SEC_USER_AGENT = "trend-bot droraizik@users.noreply.github.com"
+# the SEC only answers requests that carry a real contact email; it is kept in a GitHub secret, not in the code
+SEC_CONTACT_EMAIL = os.environ.get("SEC_CONTACT_EMAIL", "")
 FIGI_BATCH_SIZE = 10
 FIGI_PAUSE_SECONDS = 3
 BERKSHIRE_TOP_HOLDINGS_SHOWN = 10
@@ -57,7 +58,7 @@ def main():
     tickers = list(TECH_STOCKS)
     prices = download_closing_prices(tickers + [BENCHMARK, SP500], START_DATE, TREND_WINDOW_DAYS * 2)
     trend_weights = decide_trend_positions(prices[tickers], TREND_WINDOW_DAYS)
-    berkshire = load_berkshire_filings(BERKSHIRE_CIK, BERKSHIRE_FILINGS_SINCE, SEC_USER_AGENT, BERKSHIRE_CACHE_PATH,
+    berkshire = load_berkshire_filings(BERKSHIRE_CIK, BERKSHIRE_FILINGS_SINCE, SEC_CONTACT_EMAIL, BERKSHIRE_CACHE_PATH,
                                        CUSIP_CACHE_PATH, FIGI_BATCH_SIZE, FIGI_PAUSE_SECONDS)
     berkshire_weights, berkshire_prices = build_berkshire_copy(berkshire["filings"], START_DATE, TREND_WINDOW_DAYS * 2)
     news = gather_news(TECH_STOCKS, MAX_HEADLINES_PER_STOCK, MAX_HEADLINE_AGE_DAYS, NEWS_MODEL)
@@ -78,10 +79,13 @@ def decide_trend_positions(stock_prices, trend_window_days):
     return equal_weights_for_selected(in_uptrend)
 
 
-def load_berkshire_filings(cik, since, user_agent, cache_path, cusip_cache_path, figi_batch_size, figi_pause_seconds):
+def load_berkshire_filings(cik, since, contact_email, cache_path, cusip_cache_path, figi_batch_size, figi_pause_seconds):
     cache = read_json(cache_path, {})
     error = None
+    user_agent = f"trend-bot {contact_email}"
     try:
+        if not contact_email:
+            raise RuntimeError("no SEC_CONTACT_EMAIL secret set")
         for filing in list_13f_filings(cik, since, user_agent):
             if filing["accession"] not in cache:
                 cache[filing["accession"]] = {**filing, "holdings": fetch_13f_holdings(cik, filing["accession"], user_agent)}
