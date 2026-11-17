@@ -17,7 +17,9 @@
     --muted: #5B6676;
     --line: #D6DCE4;
     --bot: #2449C6;
-    --bench: #9AA3B2;
+    --bench: #A3ACBA;
+    --brk: #0E8A86;
+    --sp: #4C5A70;
     --up: #1E8556;
     --down: #C2452D;
     --hold-bg: #E6ECFB;
@@ -35,6 +37,8 @@
       --line: #2D3949;
       --bot: #8AA6FF;
       --bench: #6C7788;
+      --brk: #4FD1C5;
+      --sp: #B8C2D1;
       --up: #4DC48C;
       --down: #F0806A;
       --hold-bg: #22304D;
@@ -83,19 +87,19 @@
     padding: 6px 14px; border-radius: 8px; cursor: pointer;
   }
   .switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(20, 30, 50, .12); }
-  .legend { display: flex; gap: 18px; font-size: 0.875rem; color: var(--muted); }
-  .legend span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
-  .legend .l-bot::before { background: var(--bot); }
-  .legend .l-bench::before { background: var(--bench); }
+  .legend { display: flex; gap: 6px 18px; font-size: 0.875rem; color: var(--muted); flex-wrap: wrap; }
+  .legend span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px; margin-right: 7px; vertical-align: middle; background: var(--swatch); }
   #chart { height: 360px; margin-top: 6px; }
   .chart-empty { height: 360px; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 24px; }
   .chart-empty p { max-width: 44ch; margin: 0; }
 
-  table.stats { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 0.95rem; }
+  .stats-scroll { overflow-x: auto; margin-top: 18px; }
+  table.stats { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.95rem; }
+  .stats .leader { font-weight: 700; }
   .stats th, .stats td { text-align: right; padding: 10px 4px; border-top: 1px solid var(--line); }
   .stats th:first-child, .stats td:first-child { text-align: left; color: var(--muted); font-weight: 400; }
   .stats thead th { border-top: 0; font-weight: 600; color: var(--ink); }
-  .stats .bot-col { color: var(--bot); }
+  .stats thead th span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--swatch); }
 
   section.today { margin-top: 64px; }
   h2 { font-size: 1.5rem; letter-spacing: -0.015em; margin: 0; font-weight: 700; }
@@ -142,6 +146,17 @@
   .headlines .score { font-weight: 600; align-self: start; }
   .headlines .empty { color: var(--muted); font-size: 0.925rem; }
 
+  section.copy { margin-top: 64px; }
+  .copy-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 40px; margin-top: 18px; align-items: start; }
+  .copy-grid p { margin: 0 0 12px; max-width: 60ch; }
+  .copy-grid p.small { color: var(--muted); font-size: 0.925rem; }
+  ul.holdings { list-style: none; margin: 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .holdings li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 56px; gap: 12px; align-items: center; padding: 6px 0; font-size: 0.925rem; }
+  .holdings .t { font-weight: 700; }
+  .holdings .bar { height: 8px; border-radius: 4px; background: var(--brk); min-width: 2px; }
+  .holdings .n { color: var(--muted); font-size: 0.8rem; grid-column: 2; margin-top: -4px; }
+  .holdings .w { text-align: right; }
+  .holdings li.other .bar { background: var(--line); }
   section.how { margin-top: 64px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
   .how p { margin: 10px 0 0; max-width: 60ch; color: var(--ink); }
   .how p.small { color: var(--muted); font-size: 0.925rem; }
@@ -151,7 +166,7 @@
     .stock-main { grid-template-columns: 1fr auto; grid-template-areas: "who decision" "spark trend" "news news"; gap: 10px 16px; }
     .who { grid-area: who; } .decision { grid-area: decision; } .spark { grid-area: spark; } .trend { grid-area: trend; text-align: right; } .news { grid-area: news; }
     .headlines { padding: 0 18px 18px; }
-    section.how { grid-template-columns: 1fr; gap: 28px; }
+    section.how, .copy-grid { grid-template-columns: 1fr; gap: 28px; }
     #chart, .chart-empty { height: 280px; }
   }
   @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
@@ -175,11 +190,11 @@
         <button type="button" data-view="live" aria-pressed="true">Live record</button>
         <button type="button" data-view="history" aria-pressed="false">Replay since 2018</button>
       </div>
-      <div class="legend"><span class="l-bot">Trend bot</span><span class="l-bench" id="legend-bench"></span></div>
+      <div class="legend" id="legend"></div>
     </div>
     <div id="chart"></div>
     <div class="chart-empty" id="chart-empty" hidden><p id="chart-empty-text"></p></div>
-    <table class="stats" id="stats"></table>
+    <div class="stats-scroll"><table class="stats" id="stats"></table></div>
   </div>
 
   <section class="today">
@@ -187,6 +202,19 @@
     <p class="sub" id="today-sub"></p>
     <div class="notice" id="news-off" hidden>News scoring is off, so headlines are listed but don’t affect decisions. Add your Claude API key as a GitHub secret named ANTHROPIC_API_KEY to turn it on.</div>
     <ul class="stocks" id="stocks"></ul>
+  </section>
+
+  <section class="copy">
+    <h2>Copy Berkshire</h2>
+    <p class="sub" id="copy-sub"></p>
+    <div class="copy-grid">
+      <div>
+        <p>Every three months, Berkshire Hathaway must publish the US stocks it owns in a public report to the SEC, called a 13F. It comes out up to 45 days after the quarter ends.</p>
+        <p>This line buys the same stocks in the same proportions on the day each report comes out, and holds them until the next one. It can’t copy Berkshire’s cash pile, its private companies or its insurance business, only the stocks in the report.</p>
+        <p class="small" id="copy-note"></p>
+      </div>
+      <ul class="holdings" id="holdings"></ul>
+    </div>
   </section>
 
   <section class="how">
@@ -197,12 +225,12 @@
     </div>
     <div>
       <h2>The two records</h2>
-      <p>The <strong>live record</strong> is the real test. It starts on the bot’s first run and only counts decisions the bot actually made, with news included. Give it a few months before trusting it either way.</p>
-      <p class="small">The <strong>replay since 2018</strong> runs the price rule over past years. It can’t include news, because old headlines can’t be replayed fairly, and a rule that looks good on the past can still fail on the future.</p>
+      <p>The <strong>live record</strong> is the real test. It starts on the bot’s first run and only counts decisions actually made from then on, with news included for the trend bot. Give it a few months before trusting it either way.</p>
+      <p class="small">The <strong>replay since 2018</strong> runs the bot’s price rule and the Berkshire copy over past years. It can’t include news, because old headlines can’t be replayed fairly, and a rule that looks good on the past can still fail on the future.</p>
     </div>
   </section>
 
-  <footer>A simulation with fake money, not financial advice. Prices from Yahoo Finance; news scored by Claude.</footer>
+  <footer>A simulation with fake money, not financial advice. Prices from Yahoo Finance, Berkshire holdings from SEC filings, news scored by Claude.</footer>
 </div>
 
 <script>
@@ -219,11 +247,25 @@ let view = DATA.live.bot.dates.length >= 2 ? "live" : "history";
 
 function liveHasHistory() { return DATA.live.bot.dates.length >= 2; }
 
+const SERIES = [
+  { key: "bot", name: "Trend bot", long: "the trend bot", color: "--bot", width: 2.6 },
+  { key: "berkshire", name: "Copy Berkshire", long: "copying Berkshire", color: "--brk", width: 2.2 },
+  { key: "sp500", name: "S&P 500", long: "just holding the S&P 500", color: "--sp", width: 1.6 },
+  { key: "benchmark", name: DATA.benchmark, long: "just holding " + DATA.benchmark, color: "--bench", width: 1.6 },
+].filter(s => DATA.history[s.key]);
+
+const listJoin = items => items.length < 2 ? items.join("") : items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+
 function renderHeader() {
   const updated = new Date(DATA.updatedAt);
   document.getElementById("updated").textContent =
     "Updated " + updated.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  document.getElementById("legend-bench").textContent = "Just holding " + DATA.benchmark;
+  document.getElementById("legend").innerHTML = SERIES.map(s =>
+    '<span style="--swatch:var(' + s.color + ')">' + escapeHtml(s.name) + "</span>").join("");
+}
+
+function ranked(stats) {
+  return SERIES.filter(s => stats[s.key]).map(s => ({ ...s, final: stats[s.key].final })).sort((a, b) => b.final - a.final);
 }
 
 function renderHero() {
@@ -234,16 +276,15 @@ function renderHero() {
   const compare = document.getElementById("compare");
 
   if (view === "live" && !liveHasHistory()) {
-    h1.textContent = "The bot started its live record on " + start + ".";
-    compare.textContent = "It has " + money.format(DATA.startingCash) + " of fake money and adds a day after every US market close. The first results appear tomorrow.";
+    h1.textContent = "The live record started on " + start + ".";
+    compare.textContent = "Each approach got " + money.format(DATA.startingCash) + " of fake money that day, and a new day is added after every US market close. The first results appear tomorrow.";
     return;
   }
-  const gap = stats.bot.final - stats.benchmark.final;
-  const intro = view === "live" ? "Since " + start + ", the bot turned " : "Starting on " + start + ", the bot would have turned ";
-  h1.innerHTML = escapeHtml(intro + money.format(DATA.startingCash) + " into ") + '<span class="amount">' + money.format(stats.bot.final) + "</span>.";
-  const verdict = gap >= 0 ? "ahead by " + money.format(gap) : "behind by " + money.format(-gap);
-  compare.innerHTML = "Just holding " + escapeHtml(DATA.benchmark) + " would give <strong>" + money.format(stats.benchmark.final) +
-    "</strong>, so the bot is <strong>" + verdict + "</strong>.";
+  const [leader, ...rest] = ranked(stats);
+  const intro = view === "live" ? "Since " + start + ", the best way to grow " : "Starting on " + start + ", the best way to grow ";
+  h1.innerHTML = escapeHtml(intro + money.format(DATA.startingCash) + " was " + leader.long + ": ") +
+    '<span class="amount">' + money.format(leader.final) + "</span>.";
+  compare.innerHTML = "The others: " + listJoin(rest.map(s => escapeHtml(s.name) + " <strong>" + money.format(s.final) + "</strong>")) + ".";
 }
 
 function renderChart() {
@@ -252,20 +293,17 @@ function renderChart() {
   if (view === "live" && !liveHasHistory()) {
     chart.hidden = true;
     empty.hidden = false;
-    document.getElementById("chart-empty-text").textContent = "The live chart fills in as the bot runs each weekday. Switch to the replay to see how the price rule did since 2018.";
+    document.getElementById("chart-empty-text").textContent = "The live chart fills in as the bot runs each day. Switch to the replay to see how each approach did since 2018.";
     return;
   }
   chart.hidden = false;
   empty.hidden = true;
   const series = view === "live" ? DATA.live : DATA.history;
-  const line = (s, name, color, width) => ({
-    x: s.dates, y: s.values, name, type: "scatter", mode: "lines",
-    line: { color, width }, hovertemplate: "%{y:$,.0f}<extra>" + name + "</extra>",
-  });
-  const traces = [
-    line(series.benchmark, "Holding " + DATA.benchmark, cssVar("--bench"), 1.6),
-    line(series.bot, "Trend bot", cssVar("--bot"), 2.4),
-  ];
+  // drawn back to front so the bot's line sits on top
+  const traces = [...SERIES].reverse().filter(s => series[s.key]).map(s => ({
+    x: series[s.key].dates, y: series[s.key].values, name: s.name, type: "scatter", mode: "lines",
+    line: { color: cssVar(s.color), width: s.width }, hovertemplate: "%{y:$,.0f}<extra>" + s.name + "</extra>",
+  }));
   const layout = {
     margin: { l: 64, r: 12, t: 10, b: 36 },
     paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
@@ -283,13 +321,35 @@ function renderStats() {
   const stats = view === "live" ? DATA.liveStats : DATA.historyStats;
   const table = document.getElementById("stats");
   if (view === "live" && !liveHasHistory()) { table.innerHTML = ""; return; }
-  const row = (label, a, b) => "<tr><td>" + label + '</td><td class="bot-col">' + a + "</td><td>" + b + "</td></tr>";
+  const shown = SERIES.filter(s => stats[s.key]);
+  const best = ranked(stats)[0].key;
+  const cells = fn => shown.map(s => "<td" + (s.key === best ? ' class="leader"' : "") + ">" + fn(stats[s.key]) + "</td>").join("");
   table.innerHTML =
-    '<thead><tr><th></th><th class="bot-col">Trend bot</th><th>Just holding ' + escapeHtml(DATA.benchmark) + "</th></tr></thead><tbody>" +
-    row("Value now", money.format(stats.bot.final), money.format(stats.benchmark.final)) +
-    row("Total gain", signed(stats.bot.returnPct) + "%", signed(stats.benchmark.returnPct) + "%") +
-    row("Worst drop along the way", signed(stats.bot.maxDropPct) + "%", signed(stats.benchmark.maxDropPct) + "%") +
+    "<thead><tr><th></th>" + shown.map(s => '<th><span style="--swatch:var(' + s.color + ')"></span>' + escapeHtml(s.name) + "</th>").join("") + "</tr></thead><tbody>" +
+    "<tr><td>Value now</td>" + cells(x => money.format(x.final)) + "</tr>" +
+    "<tr><td>Total gain</td>" + cells(x => signed(x.returnPct) + "%") + "</tr>" +
+    "<tr><td>Worst drop along the way</td>" + cells(x => signed(x.maxDropPct) + "%") + "</tr>" +
     "</tbody>";
+}
+
+function renderBerkshire() {
+  const b = DATA.berkshire;
+  const sub = document.getElementById("copy-sub");
+  const list = document.getElementById("holdings");
+  if (!b.holdings.length) {
+    sub.textContent = b.error ? b.error + ", so Copy Berkshire is missing today. It will try again on the next run." : "Berkshire’s filings haven’t been read yet. They’ll appear after the next run.";
+    list.hidden = true;
+    return;
+  }
+  sub.textContent = "Currently copying the report filed on " + longDate(b.latestFiled) + ", for the quarter ending " + longDate(b.latestPeriod) + ".";
+  document.getElementById("copy-note").textContent = (b.error ? b.error + ", so this uses the reports saved earlier. " : "") +
+    "The replay uses " + b.filingCount + " reports since 2017, with the same 0.1% trading cost as the bot.";
+  const max = b.holdings[0].weightPct;
+  const rows = b.holdings.map(h =>
+    '<li><span class="t">' + escapeHtml(h.ticker) + '</span><span class="bar" style="width:' + (h.weightPct / max * 100).toFixed(1) + '%"></span><span class="w">' + h.weightPct.toFixed(1) + "%</span>" +
+    '<span class="n">' + escapeHtml(h.name) + "</span></li>");
+  if (b.otherPct > 0.05) rows.push('<li class="other"><span class="t">Others</span><span class="bar" style="width:' + (b.otherPct / max * 100).toFixed(1) + '%"></span><span class="w">' + b.otherPct.toFixed(1) + "%</span></li>");
+  list.innerHTML = rows.join("");
 }
 
 function sparkline(stock) {
@@ -399,6 +459,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ren
 
 renderHeader();
 renderStocks();
+renderBerkshire();
 renderHow();
 setView(view);
 </script>

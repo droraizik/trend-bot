@@ -5,6 +5,10 @@ on:
     - cron: "20 8 * * *"   # 11:20 in Israel during summer time
     - cron: "20 9 * * *"   # 11:20 in Israel during winter time
   workflow_dispatch:
+  push:
+    branches: [main]
+    # rebuild the page right away when the bot's code changes
+    paths: ["trend_bot.py", "Functions/**", "dashboard_template.html", "requirements.txt", ".github/workflows/**"]
 
 permissions:
   contents: write

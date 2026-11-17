@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import pandas as pd
 import yfinance as yf
@@ -7,7 +8,8 @@ def download_closing_prices(tickers, start_date, warmup_days):
     fetch_start = pd.Timestamp(start_date) - pd.Timedelta(days=warmup_days)
     data = yf.download(tickers, start=fetch_start, auto_adjust=True, progress=False)
     # Yahoo sometimes leaves a stock's latest price blank; the last known price stands in for it
-    prices = data["Close"].dropna(how="all").ffill()
+    # tickers Yahoo has no data for come back as empty columns
+    prices = data["Close"].dropna(how="all").dropna(axis=1, how="all").ffill()
     prices.index = pd.to_datetime(prices.index).tz_localize(None).normalize()
     return prices
 
@@ -51,3 +53,12 @@ def read_decision_log(log_path):
 def save_decision_log(log, log_path):
     Path(log_path).parent.mkdir(parents=True, exist_ok=True)
     log.sort_values(["date", "ticker"]).to_csv(log_path, index=False, date_format="%Y-%m-%d")
+
+
+def read_json(path, default):
+    return json.loads(Path(path).read_text(encoding="utf-8")) if Path(path).exists() else default
+
+
+def write_json(data, path):
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(json.dumps(data, indent=1, sort_keys=True), encoding="utf-8")
