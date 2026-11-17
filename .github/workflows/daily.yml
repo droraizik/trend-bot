@@ -2,14 +2,35 @@ name: Daily trend bot
 
 on:
   schedule:
-    - cron: "30 21 * * 1-5"   # 21:30 UTC, after the US market closes
+    - cron: "20 8 * * *"   # 11:20 in Israel during summer time
+    - cron: "20 9 * * *"   # 11:20 in Israel during winter time
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  check-time:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - id: gate
+        # GitHub only knows UTC, so both times are scheduled and only the one that is 11:20 in Israel today goes ahead
+        run: |
+          offset=$(TZ=Asia/Jerusalem date +%z)
+          trigger="${{ github.event.schedule }}"
+          if [ "${{ github.event_name }}" != "schedule" ] \
+             || { [ "$offset" = "+0300" ] && [ "$trigger" = "20 8 * * *" ]; } \
+             || { [ "$offset" = "+0200" ] && [ "$trigger" = "20 9 * * *" ]; }; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   run-bot:
+    needs: check-time
+    if: needs.check-time.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -6,7 +6,8 @@ import yfinance as yf
 def download_closing_prices(tickers, start_date, warmup_days):
     fetch_start = pd.Timestamp(start_date) - pd.Timedelta(days=warmup_days)
     data = yf.download(tickers, start=fetch_start, auto_adjust=True, progress=False)
-    prices = data["Close"].dropna(how="all")
+    # Yahoo sometimes leaves a stock's latest price blank; the last known price stands in for it
+    prices = data["Close"].dropna(how="all").ffill()
     prices.index = pd.to_datetime(prices.index).tz_localize(None).normalize()
     return prices
 
