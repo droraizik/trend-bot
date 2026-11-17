@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tech trend bot</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root {
+    --bg: #EDF0F4;
+    --surface: #FFFFFF;
+    --ink: #18202B;
+    --muted: #5B6676;
+    --line: #D6DCE4;
+    --bot: #2449C6;
+    --bench: #9AA3B2;
+    --up: #1E8556;
+    --down: #C2452D;
+    --hold-bg: #E6ECFB;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141C28;
+      --surface: #1B2534;
+      --ink: #E7ECF3;
+      --muted: #9AA5B5;
+      --line: #2D3949;
+      --bot: #8AA6FF;
+      --bench: #6C7788;
+      --up: #4DC48C;
+      --down: #F0806A;
+      --hold-bg: #22304D;
+      color-scheme: dark;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 24px 64px; }
+  a { color: var(--bot); }
+  :focus-visible { outline: 2px solid var(--bot); outline-offset: 3px; border-radius: 4px; }
+
+  header.top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .brand { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
+  .meta { color: var(--muted); font-size: 0.875rem; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; color: var(--ink); background: var(--surface); }
+
+  .hero { margin-top: 44px; }
+  .hero h1 {
+    font-size: clamp(1.75rem, 4.2vw, 3rem);
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+    margin: 0;
+    max-width: 22ch;
+  }
+  .hero h1 .amount { font-weight: 800; }
+  .hero .compare { margin: 14px 0 0; font-size: 1.15rem; color: var(--muted); max-width: 60ch; }
+  .hero .compare strong { color: var(--ink); font-weight: 600; }
+
+  .chart-panel { margin-top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 8px; }
+  .chart-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .switch { display: inline-flex; background: var(--bg); border-radius: 10px; padding: 3px; }
+  .switch button {
+    font: inherit; font-size: 0.9rem; font-weight: 500; border: 0; background: transparent; color: var(--muted);
+    padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  }
+  .switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(20, 30, 50, .12); }
+  .legend { display: flex; gap: 18px; font-size: 0.875rem; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
+  .legend .l-bot::before { background: var(--bot); }
+  .legend .l-bench::before { background: var(--bench); }
+  #chart { height: 360px; margin-top: 6px; }
+  .chart-empty { height: 360px; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 24px; }
+  .chart-empty p { max-width: 44ch; margin: 0; }
+
+  table.stats { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 0.95rem; }
+  .stats th, .stats td { text-align: right; padding: 10px 4px; border-top: 1px solid var(--line); }
+  .stats th:first-child, .stats td:first-child { text-align: left; color: var(--muted); font-weight: 400; }
+  .stats thead th { border-top: 0; font-weight: 600; color: var(--ink); }
+  .stats .bot-col { color: var(--bot); }
+
+  section.today { margin-top: 64px; }
+  h2 { font-size: 1.5rem; letter-spacing: -0.015em; margin: 0; font-weight: 700; }
+  .sub { color: var(--muted); margin: 6px 0 0; max-width: 64ch; }
+  .notice { margin-top: 16px; padding: 12px 16px; border-radius: 10px; background: var(--surface); border-left: 3px solid var(--bench); color: var(--muted); font-size: 0.925rem; }
+
+  ul.stocks { list-style: none; margin: 22px 0 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .stock + .stock { border-top: 1px solid var(--line); }
+  .stock-main {
+    width: 100%; font: inherit; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer;
+    display: grid; grid-template-columns: 170px 124px minmax(0, 1fr) minmax(0, 1.5fr) 150px; gap: 18px; align-items: center;
+    padding: 14px 18px;
+  }
+  .stock-main:hover { background: color-mix(in srgb, var(--bg) 55%, transparent); }
+  .stock[data-status="hold"] .stock-main { box-shadow: inset 3px 0 0 var(--bot); }
+  .who strong { display: block; font-weight: 700; font-size: 1rem; }
+  .who span { color: var(--muted); font-size: 0.85rem; }
+  .spark { display: block; width: 124px; height: 34px; overflow: visible; }
+  .trend { font-size: 0.9rem; }
+  .trend .dir { font-weight: 600; }
+  .trend .up { color: var(--up); }
+  .trend .down { color: var(--down); }
+  .news { font-size: 0.875rem; color: var(--muted); min-width: 0; }
+  .news .label { color: var(--ink); font-weight: 500; }
+  .meter { position: relative; height: 4px; border-radius: 2px; background: var(--line); margin: 4px 0 6px; max-width: 160px; }
+  .meter::after { content: ""; position: absolute; left: 50%; top: -3px; width: 1px; height: 10px; background: var(--muted); opacity: .5; }
+  .meter i { position: absolute; top: -3px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; }
+  .summary { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .decision { text-align: right; font-weight: 600; font-size: 0.95rem; }
+  .decision .tag { display: inline-block; padding: 4px 10px; border-radius: 8px; }
+  .stock[data-status="hold"] .decision .tag { background: var(--hold-bg); color: var(--bot); }
+  .stock[data-status="out"] .decision .tag { color: var(--muted); font-weight: 500; }
+  .stock[data-status="vetoed"] .decision .tag { color: var(--down); }
+  .chev { display: inline-block; margin-left: 6px; color: var(--muted); transition: transform .15s ease; }
+  .stock-main[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+  .headlines { padding: 0 18px 18px 206px; }
+  .headlines ul { list-style: none; margin: 0; padding: 0; }
+  .headlines li { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 9px 0; border-top: 1px dashed var(--line); font-size: 0.925rem; }
+  .headlines li:first-child { border-top: 0; }
+  .headlines a { color: var(--ink); text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .headlines a:hover { text-decoration-color: var(--bot); }
+  .headlines .src { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  .headlines .score { font-weight: 600; align-self: start; }
+  .headlines .empty { color: var(--muted); font-size: 0.925rem; }
+
+  section.how { margin-top: 64px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .how p { margin: 10px 0 0; max-width: 60ch; color: var(--ink); }
+  .how p.small { color: var(--muted); font-size: 0.925rem; }
+  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+
+  @media (max-width: 860px) {
+    .stock-main { grid-template-columns: 1fr auto; grid-template-areas: "who decision" "spark trend" "news news"; gap: 10px 16px; }
+    .who { grid-area: who; } .decision { grid-area: decision; } .spark { grid-area: spark; } .trend { grid-area: trend; text-align: right; } .news { grid-area: news; }
+    .headlines { padding: 0 18px 18px; }
+    section.how { grid-template-columns: 1fr; gap: 28px; }
+    #chart, .chart-empty { height: 280px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Tech trend bot</div>
+    <div class="meta"><span class="pill">Fake money</span><span id="updated"></span></div>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <h1 id="headline"></h1>
+    <p class="compare" id="compare"></p>
+  </section>
+
+  <div class="chart-panel">
+    <div class="chart-bar">
+      <div class="switch" role="group" aria-label="Which record to show">
+        <button type="button" data-view="live" aria-pressed="true">Live record</button>
+        <button type="button" data-view="history" aria-pressed="false">Replay since 2018</button>
+      </div>
+      <div class="legend"><span class="l-bot">Trend bot</span><span class="l-bench" id="legend-bench"></span></div>
+    </div>
+    <div id="chart"></div>
+    <div class="chart-empty" id="chart-empty" hidden><p id="chart-empty-text"></p></div>
+    <table class="stats" id="stats"></table>
+  </div>
+
+  <section class="today">
+    <h2 id="today-title">What the bot holds next</h2>
+    <p class="sub" id="today-sub"></p>
+    <div class="notice" id="news-off" hidden>News scoring is off, so headlines are listed but don’t affect decisions. Add your Claude API key as a GitHub secret named ANTHROPIC_API_KEY to turn it on.</div>
+    <ul class="stocks" id="stocks"></ul>
+  </section>
+
+  <section class="how">
+    <div>
+      <h2>How it decides</h2>
+      <p id="how-rules"></p>
+      <p id="how-news"></p>
+    </div>
+    <div>
+      <h2>The two records</h2>
+      <p>The <strong>live record</strong> is the real test. It starts on the bot’s first run and only counts decisions the bot actually made, with news included. Give it a few months before trusting it either way.</p>
+      <p class="small">The <strong>replay since 2018</strong> runs the price rule over past years. It can’t include news, because old headlines can’t be replayed fairly, and a rule that looks good on the past can still fail on the future.</p>
+    </div>
+  </section>
+
+  <footer>A simulation with fake money, not financial advice. Prices from Yahoo Finance; news scored by Claude.</footer>
+</div>
+
+<script>
+const DATA = __BOT_DATA__;
+
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const longDate = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+const shortDate = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const signed = (n, digits = 1) => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n).toFixed(digits);
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+let view = DATA.live.bot.dates.length >= 2 ? "live" : "history";
+
+function liveHasHistory() { return DATA.live.bot.dates.length >= 2; }
+
+function renderHeader() {
+  const updated = new Date(DATA.updatedAt);
+  document.getElementById("updated").textContent =
+    "Updated " + updated.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  document.getElementById("legend-bench").textContent = "Just holding " + DATA.benchmark;
+}
+
+function renderHero() {
+  const series = view === "live" ? DATA.live : DATA.history;
+  const stats = view === "live" ? DATA.liveStats : DATA.historyStats;
+  const start = longDate(series.bot.dates[0]);
+  const h1 = document.getElementById("headline");
+  const compare = document.getElementById("compare");
+
+  if (view === "live" && !liveHasHistory()) {
+    h1.textContent = "The bot started its live record on " + start + ".";
+    compare.textContent = "It has " + money.format(DATA.startingCash) + " of fake money and adds a day after every US market close. The first results appear tomorrow.";
+    return;
+  }
+  const gap = stats.bot.final - stats.benchmark.final;
+  const intro = view === "live" ? "Since " + start + ", the bot turned " : "Starting on " + start + ", the bot would have turned ";
+  h1.innerHTML = escapeHtml(intro + money.format(DATA.startingCash) + " into ") + '<span class="amount">' + money.format(stats.bot.final) + "</span>.";
+  const verdict = gap >= 0 ? "ahead by " + money.format(gap) : "behind by " + money.format(-gap);
+  compare.innerHTML = "Just holding " + escapeHtml(DATA.benchmark) + " would give <strong>" + money.format(stats.benchmark.final) +
+    "</strong>, so the bot is <strong>" + verdict + "</strong>.";
+}
+
+function renderChart() {
+  const chart = document.getElementById("chart");
+  const empty = document.getElementById("chart-empty");
+  if (view === "live" && !liveHasHistory()) {
+    chart.hidden = true;
+    empty.hidden = false;
+    document.getElementById("chart-empty-text").textContent = "The live chart fills in as the bot runs each weekday. Switch to the replay to see how the price rule did since 2018.";
+    return;
+  }
+  chart.hidden = false;
+  empty.hidden = true;
+  const series = view === "live" ? DATA.live : DATA.history;
+  const line = (s, name, color, width) => ({
+    x: s.dates, y: s.values, name, type: "scatter", mode: "lines",
+    line: { color, width }, hovertemplate: "%{y:$,.0f}<extra>" + name + "</extra>",
+  });
+  const traces = [
+    line(series.benchmark, "Holding " + DATA.benchmark, cssVar("--bench"), 1.6),
+    line(series.bot, "Trend bot", cssVar("--bot"), 2.4),
+  ];
+  const layout = {
+    margin: { l: 64, r: 12, t: 10, b: 36 },
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    font: { family: "Schibsted Grotesk, system-ui, sans-serif", color: cssVar("--muted"), size: 12 },
+    xaxis: { gridcolor: cssVar("--line"), zeroline: false, showline: false },
+    yaxis: { gridcolor: cssVar("--line"), zeroline: false, tickprefix: "$", tickformat: ",.0f" },
+    showlegend: false, hovermode: "x unified",
+    hoverlabel: { bgcolor: cssVar("--surface"), bordercolor: cssVar("--line"), font: { color: cssVar("--ink") } },
+  };
+  if (window.Plotly) Plotly.react(chart, traces, layout, { displayModeBar: false, responsive: true });
+  else chart.textContent = "The chart library didn’t load. Check your connection and reload the page.";
+}
+
+function renderStats() {
+  const stats = view === "live" ? DATA.liveStats : DATA.historyStats;
+  const table = document.getElementById("stats");
+  if (view === "live" && !liveHasHistory()) { table.innerHTML = ""; return; }
+  const row = (label, a, b) => "<tr><td>" + label + '</td><td class="bot-col">' + a + "</td><td>" + b + "</td></tr>";
+  table.innerHTML =
+    '<thead><tr><th></th><th class="bot-col">Trend bot</th><th>Just holding ' + escapeHtml(DATA.benchmark) + "</th></tr></thead><tbody>" +
+    row("Value now", money.format(stats.bot.final), money.format(stats.benchmark.final)) +
+    row("Total gain", signed(stats.bot.returnPct) + "%", signed(stats.benchmark.returnPct) + "%") +
+    row("Worst drop along the way", signed(stats.bot.maxDropPct) + "%", signed(stats.benchmark.maxDropPct) + "%") +
+    "</tbody>";
+}
+
+function sparkline(stock) {
+  const prices = stock.spark.values;
+  const avg = stock.sparkAverage;
+  const all = prices.concat(avg).filter(v => v !== null);
+  const min = Math.min(...all), max = Math.max(...all);
+  const w = 124, h = 34;
+  const point = (v, i) => (i / (prices.length - 1) * w).toFixed(1) + "," + (h - (v - min) / (max - min || 1) * h).toFixed(1);
+  const path = values => values.map((v, i) => v === null ? null : point(v, i)).filter(Boolean).join(" ");
+  const color = stock.trendUp ? "var(--up)" : "var(--down)";
+  return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" aria-hidden="true">' +
+    '<polyline points="' + path(avg) + '" fill="none" stroke="var(--bench)" stroke-width="1.2" stroke-dasharray="3 3"/>' +
+    '<polyline points="' + path(prices) + '" fill="none" stroke="' + color + '" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+}
+
+function newsBlock(stock) {
+  if (stock.newsScore === null) {
+    const label = stock.headlines.length ? stock.headlines.length + " headlines, not scored" : "No recent headlines";
+    return '<span class="label">' + label + "</span>";
+  }
+  const s = stock.newsScore;
+  const label = s >= 0.25 ? "Mostly good news" : s <= -0.25 ? "Mostly bad news" : "Mixed or quiet news";
+  const color = s >= 0.25 ? "var(--up)" : s <= -0.25 ? "var(--down)" : "var(--bench)";
+  const left = ((s + 1) / 2 * 100).toFixed(1);
+  return '<span class="label">' + label + " (" + signed(s, 2) + ")</span>" +
+    '<div class="meter"><i style="left:' + left + "%;background:" + color + '"></i></div>' +
+    '<span class="summary">' + escapeHtml(stock.newsSummary) + "</span>";
+}
+
+function decisionText(stock) {
+  if (stock.status === "hold") return "Hold " + money.format(stock.dollars);
+  if (stock.status === "vetoed") return "Skipped: bad news";
+  return "Stay out";
+}
+
+function headlineList(stock) {
+  if (!stock.headlines.length) return '<p class="empty">No headlines from the last few days.</p>';
+  return "<ul>" + stock.headlines.map(h => {
+    const score = h.score === null || h.score === undefined ? "" :
+      '<span class="score" style="color:' + (h.score > 0.1 ? "var(--up)" : h.score < -0.1 ? "var(--down)" : "var(--muted)") + '">' + signed(h.score, 1) + "</span>";
+    return '<li><div><a href="' + escapeHtml(h.url) + '" target="_blank" rel="noopener">' + escapeHtml(h.title) + "</a>" +
+      '<span class="src">' + escapeHtml(h.source) + ", " + escapeHtml(h.published) + "</span></div>" + score + "</li>";
+  }).join("") + "</ul>";
+}
+
+function renderStocks() {
+  const order = { hold: 0, vetoed: 1, out: 2 };
+  const stocks = [...DATA.stocks].sort((a, b) => order[a.status] - order[b.status] || b.pctVsAverage - a.pctVsAverage);
+  const held = stocks.filter(s => s.status === "hold").length;
+  const vetoed = stocks.filter(s => s.status === "vetoed").length;
+
+  document.getElementById("today-title").textContent = held ? "What the bot holds next" : "The bot is in cash";
+  let sub = "Decided from closing prices on " + longDate(DATA.lastMarketDay) + ". ";
+  sub += held ? "Holding " + held + " of " + stocks.length + " stocks" : "None of the " + stocks.length + " stocks is trending up";
+  sub += vetoed ? ", and skipping " + vetoed + " because of bad news." : ".";
+  sub += " Tap a stock to see its headlines.";
+  document.getElementById("today-sub").textContent = sub;
+  document.getElementById("news-off").hidden = DATA.newsEnabled;
+
+  const window_ = DATA.settings.trendWindowDays;
+  document.getElementById("stocks").innerHTML = stocks.map((s, i) => {
+    const dir = s.pctVsAverage >= 0
+      ? '<span class="dir up">' + Math.abs(s.pctVsAverage).toFixed(1) + "% above</span>"
+      : '<span class="dir down">' + Math.abs(s.pctVsAverage).toFixed(1) + "% below</span>";
+    return '<li class="stock" data-status="' + s.status + '">' +
+      '<button type="button" class="stock-main" aria-expanded="false" aria-controls="hl-' + i + '">' +
+        '<span class="who"><strong>' + escapeHtml(s.ticker) + "</strong><span>" + escapeHtml(s.name) + " at " + money.format(s.price) + "</span></span>" +
+        sparkline(s) +
+        '<span class="trend">' + dir + " its " + window_ + "-day average</span>" +
+        '<span class="news">' + newsBlock(s) + "</span>" +
+        '<span class="decision"><span class="tag">' + decisionText(s) + '</span><span class="chev" aria-hidden="true">▾</span></span>' +
+      "</button>" +
+      '<div class="headlines" id="hl-' + i + '" hidden>' + headlineList(s) + "</div></li>";
+  }).join("");
+
+  document.querySelectorAll(".stock-main").forEach(button => {
+    button.addEventListener("click", () => {
+      const open = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!open));
+      document.getElementById(button.getAttribute("aria-controls")).hidden = open;
+    });
+  });
+}
+
+function renderHow() {
+  const st = DATA.settings;
+  document.getElementById("how-rules").textContent =
+    "Every weekday after the US market closes, the bot compares each stock’s price with its average over the last " + st.trendWindowDays +
+    " trading days. Above the average means the stock is trending up, so the bot wants to own it. The money is split equally between the stocks it keeps, and each trade costs " +
+    st.costPerTradePct + "% to stay realistic.";
+  document.getElementById("how-news").textContent =
+    "Then Claude reads the last few days of headlines for each stock and scores them from −1 (bad for the price) to +1 (good). If a stock’s news scores " +
+    signed(st.newsVetoScore, 1) + " or worse, the bot skips it even when the trend is up.";
+}
+
+function setView(next) {
+  view = next;
+  document.querySelectorAll(".switch button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  renderHero();
+  renderChart();
+  renderStats();
+}
+
+document.querySelectorAll(".switch button").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderChart);
+
+renderHeader();
+renderStocks();
+renderHow();
+setView(view);
+</script>
+</body>
+</html>
